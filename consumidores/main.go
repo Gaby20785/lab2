@@ -331,8 +331,8 @@ func main() {
 	
 	grpcServer := grpc.NewServer()
 	pb.RegisterCyberDayServiceServer(grpcServer, consumidor)
-
-	listener, err := net.Listen("tcp", consumidor.direccion)
+	listenAddress := fmt.Sprintf("0.0.0.0:%d", puerto)
+	listener, err := net.Listen("tcp", listenAddress)
 	if err != nil {
 		log.Fatalf("Error al iniciar consumidor %s: %v", consumidor.id, err)
 	}
@@ -346,3 +346,4 @@ func main() {
 		log.Fatalf("Error en servidor consumidor %s: %v", consumidor.id, err)
 	}
 }
+
