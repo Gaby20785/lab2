@@ -259,7 +259,8 @@ func main() {
 	grpcServer := grpc.NewServer()
 	pb.RegisterCyberDayServiceServer(grpcServer, nodo)
 
-	listener, err := net.Listen("tcp", puerto)
+	listenAddress := "0.0.0.0" + puerto
+	listener, err := net.Listen("tcp", listenAddress)
 	if err != nil {
 		log.Fatalf("Error al iniciar nodo %s: %v", nodoID, err)
 	}
@@ -271,4 +272,5 @@ func main() {
 	if err := grpcServer.Serve(listener); err != nil {
 		log.Fatalf("Error en servidor nodo %s: %v", nodoID, err)
 	}
+
 }
