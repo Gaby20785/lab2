@@ -40,7 +40,7 @@ var categoriasValidas = []string{
 }
 
 func (p *Productor) cargarCatalogo() error {
-	archivoCatalogo := "catalogos/" + p.nombre + "_catalogo.csv"
+	archivoCatalogo := "catalogos/" + strings.ToLower(p.nombre) + "_catalogo.csv"
 	
 	file, err := os.Open(archivoCatalogo)
 	if err != nil {
@@ -243,4 +243,5 @@ func main() {
 	productor.esperarInicio()
 
 	productor.iniciarGeneracionOfertas()
+
 }
