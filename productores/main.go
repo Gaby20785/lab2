@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -245,3 +246,4 @@ func main() {
 	productor.iniciarGeneracionOfertas()
 
 }
+
