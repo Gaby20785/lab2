@@ -20,13 +20,14 @@
 
 
 ## Instrucciones:
-- Abrir dos terminales de la VM dist16 y una terminal para dist13, dist14 y dist15.
+- Abrir dos terminales de la VM dist16 y una terminal para dist13, dist14 y dist15. Ingresar al directorio "/lab2" en cada terminal
 
 - Ir a la primera terminal de la VM dist16 y ejecutar ```make start-mv4```, esperar que se levanten los contenedores antes de continuar.
 - Ir a la VM dist13 y ejecutar ```make start-mv1```.
 - Ir a la VM dist14 y ejecutar ```make start-mv2```.
 - Ir a la VM dist15 y ejecutar ```make start-mv3```.
 - Cuando desee terminar con la ejecución ingrese a la segunda terminal de la VM dist16 y ejecute el siguiente comando ```make attach-broker```. Una vez se realice la conexión ejecute el comando ```fin``` o ```reporte``` para que los productores dejen de enviar ofertas y para que el broker pueda crear el reporte.
+- Una vez generado el reporte se pueden terminar las ejecuciones con Ctrl+C, y se pueden ver los archivos generados ingresando al directorio "/output"
 
 ## Credenciales VM:
 ### dist013
@@ -61,4 +62,5 @@
 
 **Entidades:**
 - Broker
+
 - Consumidores 1, 2, 3, 4.
