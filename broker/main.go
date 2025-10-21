@@ -17,6 +17,9 @@ import(
 	pb "lab2/broker/proto"
 )
 
+// Broker - Estructura principal del sistema, se almacenan los productores, nodos
+// y consumidores registrados y toda su información relevante. También se gestionan
+// las métricas más importantes del sistema, que son usadas para generar el reporte.
 type Broker struct {
 	pb.UnimplementedCyberDayServiceServer
 	productores  		map[string]*ProductorInfo
@@ -63,6 +66,7 @@ const (
 	R = 2 
 )
 
+// Categorias válidas para las ofertas
 var categoriasValidas = []string{
 	"Electrónica", "Moda", "Hogar", "Deportes", "Belleza", "Infantil",
 	"Computación", "Electrodomésticos", "Herramientas", "Juguetes", 
@@ -77,6 +81,7 @@ var nodosValidos = []string{
 	"DB1", "DB2", "DB3",
 }
 
+// NewBroker - Constructor del broker
 func NewBroker() *Broker {
 	return &Broker{
 		productores: 		make(map[string]*ProductorInfo),
@@ -90,6 +95,9 @@ func NewBroker() *Broker {
 	}
 }
 
+// RegistrarProductor - Registra un nuevo productor en el sistema, al recibir una solicitud de registro
+// se revisa que el nombre de la tienda sea válido, que no esté registrado con anterioridad y si pasa las
+// validaciones se registra en el broker.
 func (b *Broker) RegistrarProductor(ctx context.Context, req *pb.RegistroProductorRequest) (*pb.RegistroResponse, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -117,6 +125,9 @@ func (b *Broker) RegistrarProductor(ctx context.Context, req *pb.RegistroProduct
 	return &pb.RegistroResponse{Exito: true}, nil
 }
 
+// RegistrarNodo - Registra un nuevo nodo en el sistema, al recibir una solicitud de registro
+// se revisa que el nombre del nodo sea válido, que no esté registrado con anterioridad y si pasa las
+// validaciones se registra en el broker.
 func (b *Broker) RegistrarNodo(ctx context.Context, req *pb.RegistroNodoRequest) (*pb.RegistroResponse, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -154,6 +165,9 @@ func (b *Broker) RegistrarNodo(ctx context.Context, req *pb.RegistroNodoRequest)
 	return &pb.RegistroResponse{Exito: true}, nil
 }
 
+
+// RegistrarConsumidor - Registra un nuevo consumidor en el sistema, al recibir una solicitud de registro se revisa
+// que el consumidor no esté registrado con anterioridad y si pasa las validaciones se registra en el broker.
 func (b *Broker) RegistrarConsumidor(ctx context.Context, req *pb.RegistroConsumidorRequest) (*pb.RegistroResponse, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -194,6 +208,7 @@ func (b *Broker) RegistrarConsumidor(ctx context.Context, req *pb.RegistroConsum
 	return &pb.RegistroResponse{Exito: true}, nil
 }
 
+//verificarInicio - Verifica si todas las entidades están registradas para comenzar con la ejecución.
 func (b *Broker) verificarInicio() {
 	registrados := len(b.productores) + len(b.nodos) + len(b.consumidores)
 	
@@ -207,6 +222,8 @@ func (b *Broker) verificarInicio() {
 	}
 }
 
+// SolicitarInicio - Los productores consultan si el sistema ya está listo y si pueden comenzar
+// a enviar ofertas al broker.
 func (b *Broker) SolicitarInicio(ctx context.Context, req *pb.InicioRequest) (*pb.InicioResponse, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -216,6 +233,9 @@ func (b *Broker) SolicitarInicio(ctx context.Context, req *pb.InicioRequest) (*p
 	}, nil
 }
 
+// EnviarOferta - Procesa una oferta recibida de un productor, se verifica que el productor este registrado
+// y se verifica si la categoría es válida. Si la oferta es aceptada se procede a almacenarla en los nodos
+// y se distribuye a los consumidores si la oferta cumple con sus filtros.
 func (b *Broker) EnviarOferta(ctx context.Context, req *pb.OfertaRequest) (*pb.OfertaResponse, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -261,6 +281,9 @@ func (b *Broker) EnviarOferta(ctx context.Context, req *pb.OfertaRequest) (*pb.O
 	}
 }
 
+//almacenarOfertaEnNodos - Almacena la oferta en los nodos con quorum W. Se envía la oferta a cada
+// nodo y se cuentan las cantidades de confirmaciones, si hay al menos dos confirmaciones se retorna 
+// true, y en caso contrario se retorna false.
 func (b *Broker) almacenarOfertaEnNodos(oferta *pb.OfertaRequest) bool {
 	log.Printf("Enviando a %d nodos (necesario W=%d)...", len(b.nodos), W)
 	
@@ -287,6 +310,8 @@ func (b *Broker) almacenarOfertaEnNodos(oferta *pb.OfertaRequest) bool {
 	}
 }
 
+// enviarOfertaANodo - Envía la oferta a un nodo en específico, también se revisa si un nodo
+// se acaba de caer o si se reconectó y se actualiza su estado y cantCaidas de ser necesario.
 func (b *Broker) enviarOfertaANodo(nodoInfo *NodoInfo, oferta *pb.OfertaRequest) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -318,6 +343,7 @@ func (b *Broker) enviarOfertaANodo(nodoInfo *NodoInfo, oferta *pb.OfertaRequest)
 	}
 }
 
+// distribuirAConsumidores - Distribuye la oferta a los consumidores interesados.
 func (b *Broker) distribuirAConsumidores(oferta *pb.OfertaRequest) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -339,6 +365,8 @@ func (b *Broker) distribuirAConsumidores(oferta *pb.OfertaRequest) {
 	log.Printf("Oferta %s distribuida a %d consumidores", oferta.GetOfertaId(), consumidoresNotificados)
 }
 
+// notificarConsumidor - Notifica una oferta a un consumidor específico. También se revisa si un
+// consumidor se acaba de caer o si se reconectó y se actualiza su estado y cantCaidas de ser necesario.
 func (b *Broker) notificarConsumidor(consumidorID string, consumidorInfo *ConsumidorInfo, oferta *pb.OfertaRequest) bool{
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -370,6 +398,7 @@ func (b *Broker) notificarConsumidor(consumidorID string, consumidorInfo *Consum
 	}
 }
 
+// coincideConPreferencias - Verifica si una oferta coincide con las preferencias de un consumidor.
 func (b *Broker) coincideConPreferencias(oferta *pb.OfertaRequest, consumidor *ConsumidorInfo) bool {
 	if len(consumidor.categorias) > 0 && consumidor.categorias[0] != "null" {
 		categoriaCoincide := false
@@ -404,6 +433,11 @@ func (b *Broker) coincideConPreferencias(oferta *pb.OfertaRequest, consumidor *C
 	return true
 }
 
+
+//SincronizarEntidad - Sincroniza un nodo o consumidor que se recuperó de una caída. Para esto
+// se le solicita el histórico de ofertas a los nodos, luego se compara con las ofertas que el nodo
+// o consumidor tenía guardadas y se les envía las ofertas faltantes para que se pongan al día.
+// En el caso de consumidores también se filtran las ofertas por preferencias antes de entregarselas.
 func (b *Broker) SincronizarEntidad(ctx context.Context, req *pb.SincronizacionRequest) (*pb.SincronizacionResponse, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -480,6 +514,8 @@ func (b *Broker) SincronizarEntidad(ctx context.Context, req *pb.SincronizacionR
 	}, nil
 }
 
+//obtenerHistorialOfertas - Obtiene el historial completo de ofertas consultando a los nodos
+// y verificando que al menos dos nodos tengan la misma lista de ofertas.
 func (b *Broker) obtenerHistorialOfertas() []*pb.OfertaRequest {
     var listasOfertas [][]*pb.OfertaRequest
     var nodosIDs []string
@@ -529,6 +565,7 @@ func (b *Broker) obtenerHistorialOfertas() []*pb.OfertaRequest {
     return nil
 }
 
+// sonListasIdenticas - Compara si dos listas de ofertas son idénticas.
 func (b *Broker) sonListasIdenticas(lista1, lista2 []*pb.OfertaRequest) bool {
     if len(lista1) != len(lista2) {
         log.Printf("Listas de ofertas tienen diferente longitud: %d vs %d", len(lista1), len(lista2))
@@ -552,6 +589,7 @@ func (b *Broker) sonListasIdenticas(lista1, lista2 []*pb.OfertaRequest) bool {
     return true
 }
 
+// esValido - Función auxiliar para validad los valores con respecto a una lista.
 func esValido(valor string, listaValidos []string) bool {
 	for _, valido := range listaValidos {
 		if valido == valor {
@@ -561,6 +599,7 @@ func esValido(valor string, listaValidos []string) bool {
 	return false
 }
 
+//generarReporteFinal - Genera un reporte final completo del sistema.
 func (b *Broker) generarReporteFinal() {
     b.mu.Lock()
     defer b.mu.Unlock()
@@ -649,6 +688,7 @@ el término de la ejecución.` + "\n")
     log.Printf("Reporte final generado: %s", filename)
 }
 
+// generarConclusion - Genera una conclusión basada en el esatdo final del sistema.
 func (b *Broker) generarConclusion() string {
 
     var conclusion strings.Builder
@@ -737,12 +777,15 @@ func (b *Broker) generarConclusion() string {
     return conclusion.String()
 }
 
+// ConsultarEstado - Los productores preguntan si el sistema sigue activo, se les envía la respuesta.
 func (b *Broker) ConsultarEstado(ctx context.Context, req *pb.ConsultarEstadoRequest) (*pb.ConsultarEstadoResponse, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return &pb.ConsultarEstadoResponse{Activo: b.sistemaActivo}, nil
 }
 
+// iniciarInterfazUsuario - Inicia la interfaz de comandos para el broker, al recibir el comando "fin" o "reporte" se actualiza el estado
+// del sistema, se espera unos segundos para que terminen de resincronizarse los nodos o consumidores caidos y se genera el reporte.
 func (b *Broker) iniciarInterfazUsuario() {
     log.Printf("   - Escribe 'reporte' o 'fin' para generar reporte y finalizar")
     
@@ -777,6 +820,7 @@ func (b *Broker) iniciarInterfazUsuario() {
     }()
 }
 
+// main - inica el servidor gRPC
 func main() {
 	broker := NewBroker()
 	grpcServer := grpc.NewServer()

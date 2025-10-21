@@ -15,6 +15,7 @@ import (
 	pb "lab2/nodos/proto"
 )
 
+// Nodo - Estructura que representa un nodo en el sistema
 type NodoDB struct {
 	pb.UnimplementedCyberDayServiceServer
 	nombre        	string
@@ -29,6 +30,7 @@ type NodoDB struct {
 	client          pb.CyberDayServiceClient
 }
 
+// registrarEnBroker - Registra el nodo actual en el broker.
 func (n *NodoDB) registrarEnBroker(nodoID string) {
 
 	resp, err := n.client.RegistrarNodo(context.Background(), &pb.RegistroNodoRequest{
@@ -47,6 +49,11 @@ func (n *NodoDB) registrarEnBroker(nodoID string) {
 	}
 }
 
+// EnviarOferta - Recibe y almacena una oferta en el nodo.
+// Si el nodo está en fallo, la oferta es rechazada. También simula fallos aleatorios.
+// el primer nodo puede fallar en los primeros 30 segundos desde que se reciben ofertas, 
+// el segundo nodo puede fallar desde los 40 segundos hasta los 70 segundos y el último nodo
+// puede fallar despues de los 80 segundos de ejecución hasta la finalización de la ejecución.
 func (n *NodoDB) EnviarOferta(ctx context.Context, req *pb.OfertaRequest) (*pb.OfertaResponse, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -97,6 +104,7 @@ func (n *NodoDB) EnviarOferta(ctx context.Context, req *pb.OfertaRequest) (*pb.O
 	return &pb.OfertaResponse{Exito: true}, nil
 }
 
+// simularFallo - Marca el nodo como caído e inicia un proceso de recuperación automática.
 func (n *NodoDB) simularFallo() {
 	n.enFallo = true
 	n.caidasSimuladas++
@@ -108,6 +116,7 @@ func (n *NodoDB) simularFallo() {
 	go n.recuperarAutomaticamente()
 }
 
+// recuperarAutomaticamente - Espera 5 segundos e intenta resincronizar el nodo.
 func (n *NodoDB) recuperarAutomaticamente() {
 	log.Printf("%s programado para recuperarse en 5 segundos", n.nombre)
 	time.Sleep(5 * time.Second)
@@ -129,6 +138,8 @@ func (n *NodoDB) recuperarAutomaticamente() {
     n.mu.Unlock()
 }
 
+// solicitarResincronizacion - Solicita al broker las ofertas faltantes para ponerse al día.
+// Devuelve true si la sincronización fue exitosa.
 func (n *NodoDB) solicitarResincronizacion() bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -170,6 +181,8 @@ func (n *NodoDB) solicitarResincronizacion() bool {
     return true
 }
 
+// LeerOfertas - Devuelve todas las ofertas almacenadas en el nodo.
+// Si el nodo está caído, responde con exito: false.
 func (n *NodoDB) LeerOfertas(ctx context.Context, req *pb.LecturaRequest) (*pb.LecturaResponse, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -186,6 +199,7 @@ func (n *NodoDB) LeerOfertas(ctx context.Context, req *pb.LecturaRequest) (*pb.L
 	}, nil
 }
 
+// main - Configura el nodo.
 func main() {
 	var nodoID string
 	var direccion string

@@ -19,6 +19,7 @@ import (
 	pb "lab2/consumidores/proto"
 )
 
+// Consumidor - Estructura que representa un consumidor en el sistema
 type Consumidor struct {
 	pb.UnimplementedCyberDayServiceServer
 	id         			string
@@ -36,6 +37,7 @@ type Consumidor struct {
 	client            	pb.CyberDayServiceClient
 }
 
+// cargarConfiguracion - Carga la configuración del consumidor desde archivo CSV
 func cargarConfiguracion(archivo string, numeroCliente int) (*Consumidor, error) {
 	file, err := os.Open(archivo)
 	if err != nil {
@@ -107,6 +109,7 @@ func cargarConfiguracion(archivo string, numeroCliente int) (*Consumidor, error)
 	}, nil
 }
 
+// registrarEnBroker - Registra el consumidor en el broker
 func (c *Consumidor) registrarEnBroker() {
 
 	resp, err := c.client.RegistrarConsumidor(context.Background(), &pb.RegistroConsumidorRequest{
@@ -128,6 +131,8 @@ func (c *Consumidor) registrarEnBroker() {
 	}
 }
 
+// EnviarOferta - Método gRPC que recibe ofertas del broker, por cada oferta recibida hay un 10% de probabilidades
+// de que se simule un fallo, si el consumidor está simulando un fallo se reponde con exito: false.
 func (c *Consumidor) EnviarOferta(ctx context.Context, req *pb.OfertaRequest) (*pb.OfertaResponse, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -159,6 +164,7 @@ func (c *Consumidor) EnviarOferta(ctx context.Context, req *pb.OfertaRequest) (*
 	return &pb.OfertaResponse{Exito: true}, nil
 }
 
+// simularFallo - Simula una caída del consumidor y se pide la recuperación automática.
 func (c *Consumidor) simularFallo() {
 	c.enFallo = true
 	c.caidasSimuladas++
@@ -170,6 +176,7 @@ func (c *Consumidor) simularFallo() {
 	go c.recuperarAutomaticamente()
 }
 
+// recuperarAutomaticamente - Recupera al consumidor después de 5 segundos, se solicita resincronización.
 func (c *Consumidor) recuperarAutomaticamente() {
 	log.Printf("%s programado para recuperarse en 5 segundos", c.id)
 	time.Sleep(5 * time.Second)
@@ -192,6 +199,8 @@ func (c *Consumidor) recuperarAutomaticamente() {
 	c.mu.Unlock()
 }
 
+//solicitarResincronizacion - Solicita al broker las ofertas perdidas durante la caída, el broker revisa el histórico de ofertas y 
+// compara con las ofertas que aquí envía el consumidor. Se reciben las ofertas faltantes, se almacenan y se escriben en el archivo csv.
 func (c *Consumidor) solicitarResincronizacion() bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -236,6 +245,7 @@ func (c *Consumidor) solicitarResincronizacion() bool {
 	return true
 }
 
+// escribirEnCSV - Guarda una oferta en el archivo CSV del consumidor
 func (c *Consumidor) escribirEnCSV(oferta *pb.OfertaRequest) error {
 	file, err := os.OpenFile(c.archivoCSV, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
     if err != nil {
@@ -259,6 +269,7 @@ func (c *Consumidor) escribirEnCSV(oferta *pb.OfertaRequest) error {
     return writer.Write(record)
 }
 
+// crearArchivoCSVVacio - Crea el archivo CSV con los headers
 func (c *Consumidor) crearArchivoCSVVacio() error {
     c.mu.Lock()
     defer c.mu.Unlock()
@@ -282,6 +293,7 @@ func (c *Consumidor) crearArchivoCSVVacio() error {
     return nil
 }
 
+// main - Función principal que inicia el consumidor basado en el número de cliente.
 func main() {
 	var numeroCliente int
 	flag.IntVar(&numeroCliente, "cliente", 0, "Número del cliente (1-12)")

@@ -17,6 +17,8 @@ import (
 	pb "lab2/productores/proto"
 )
 
+// ProductoCatalogo - Estructura que representa 
+// un producto disponible en el catálogo de una tienda.
 type ProductoCatalogo struct {
 	productoID  string
 	tienda      string
@@ -26,6 +28,8 @@ type ProductoCatalogo struct {
 	stockBase   int
 }
 
+
+// Productor - Representa una tienda que genera y envía ofertas al broker.
 type Productor struct {
 	nombre    		string
 	client    		pb.CyberDayServiceClient
@@ -40,6 +44,7 @@ var categoriasValidas = []string{
 	"Automotriz", "Mascotas",
 }
 
+// cargarCatalogo - Carga los productos desde un archivo CSV y los guarda en la lista de productos disponibles del productor.
 func (p *Productor) cargarCatalogo() error {
 	archivoCatalogo := "catalogos/" + strings.ToLower(p.nombre) + "_catalogo.csv"
 	
@@ -86,6 +91,8 @@ func (p *Productor) cargarCatalogo() error {
 	return nil
 }
 
+// iniciarGeneracionOfertas - Inicia un ciclo continuo donde el productor genera y envía
+// ofertas aleatorias al broker mientras el sistema esté activo.
 func (p *Productor) iniciarGeneracionOfertas() {
 	rand.Seed(time.Now().UnixNano())
 
@@ -132,7 +139,8 @@ func (p *Productor) iniciarGeneracionOfertas() {
 	}
 }
 
-
+// registrarEnBroker - Envía una solicitud al broker para registrar el productor
+// y habilitarlo para enviar ofertas.
 func (p *Productor) registrarEnBroker() {
 	resp, err := p.client.RegistrarProductor(p.ctx, &pb.RegistroProductorRequest{
 		Nombre: p.nombre,
@@ -149,6 +157,8 @@ func (p *Productor) registrarEnBroker() {
 	}
 }
 
+// esperarInicio - Espera hasta que el broker indique que el sistema está listo
+// para comenzar a generar ofertas.
 func (p *Productor) esperarInicio() {
 	log.Printf("%s esperando que el sistema esté listo...", p.nombre)
 	
@@ -170,6 +180,7 @@ func (p *Productor) esperarInicio() {
 	}
 }
 
+// esCategoriaValida - Verifica si la categoría de un producto es válida.
 func esCategoriaValida(categoria string) bool {
 	for _, cat := range categoriasValidas {
 		if cat == categoria {
@@ -179,6 +190,9 @@ func esCategoriaValida(categoria string) bool {
 	return false
 }
 
+// generarOferta - Crea una oferta a partir de un producto del catálogo,
+// aplicando un descuento aleatorio y modificando el stock. También se le asigna un
+// id a la oferta.
 func (p *Productor) generarOferta(producto *ProductoCatalogo) *pb.OfertaRequest {
 	descuento := 10 + rand.Intn(41)
 	precioConDescuento := producto.precioBase * (100 - descuento) / 100
@@ -200,6 +214,7 @@ func (p *Productor) generarOferta(producto *ProductoCatalogo) *pb.OfertaRequest 
 	}
 }
 
+// main - Configura el productor.
 func main() {
 	var tienda string
 	flag.StringVar(&tienda, "tienda", "", "Nombre de la tienda (Riploy, Falabellox, Parisio)")
